@@ -1,3 +1,16 @@
+## v3.22 for all versions of KSP from 1.8.0 to 1.12.x
+
+ - 2025-08-23
+
+ ### Changes since the last release
+ *  Kerbal EVA bug fixes #925 (@KerballOne)
+ *  RealFuels KSP 1.11+ change evaJetpack fuel to Hydrazine #926 (@KerballOne)
+ *  Near Future Electric has renamed several parts #927 (@KerballOne)
+ *  Backport of the Kerbalism 4 stock science recovery dialog integration #923 (@gotmachine)
+ *  Fixed an old bug on docking #923 (@gotmachine)
+ *  Habitat Refactor - General cleanup of the Habitat module #921 (@gotmachine)
+ *  EVA Counter revamp to "Safe / Risky" status since counter was inaccurate (@R-T-B)
+
 ## v3.21 for all versions of KSP from 1.8.0 to 1.12.x
 
  - 2025-08-13
