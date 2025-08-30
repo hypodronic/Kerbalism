@@ -1506,6 +1506,12 @@ namespace KERBALISM
 			return (pos - body.position).magnitude - pqs.GetSurfaceHeight(radial);
 		}
 		*/
+
+		/// <summary>Get a body display name, without the gender tag</summary>
+		public static string BodyDisplayName(CelestialBody body)
+		{
+			return body.displayName.LocalizeRemoveGender();
+		}
 		#endregion
 
 		#region VESSEL
@@ -1625,7 +1631,13 @@ namespace KERBALISM
 			return true;
 		}
 
-
+		public static bool IsDeadEVA(Vessel v)
+		{
+			if (!v.isEVA) return false;
+			List<ProtoCrewMember> crew = Lib.CrewList(v);
+			if (crew.Count == 0) return true;
+			return DB.Kerbal(crew[0].name).eva_dead;
+		}
 
 		public static bool IsControlUnit(Vessel v)
 		{
@@ -2498,7 +2510,10 @@ namespace KERBALISM
 			// return the module prefab, and increment module-specific index
 			// note: if something messed up the prefab, or module were added dynamically,
 			// then we have no chances of finding the module prefab so we return null
-			return data.index < data.prefabs.Count ? data.prefabs[data.index++] : null;
+			if (data.index < data.prefabs.Count)
+				return data.prefabs[data.index++];
+			else
+				return null;
 		}
 		#endregion
 
