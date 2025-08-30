@@ -1,3 +1,11 @@
+## v3.23 for all versions of KSP from 1.8.0 to 1.12.x
+
+ - 2025-08-30
+
+ ### Changes since the last release
+ *  EVA Kerbal handling refactor #935 (@gotmachine)
+ *  Add min/max transmission rate experiment requirement #931  (@njits23)
+
 ## v3.22 for all versions of KSP from 1.8.0 to 1.12.x
 
  - 2025-08-23
@@ -7,7 +15,7 @@
  *  RealFuels KSP 1.11+ change evaJetpack fuel to Hydrazine #926 (@KerballOne)
  *  Near Future Electric has renamed several parts #927 (@KerballOne)
  *  Backport of the Kerbalism 4 stock science recovery dialog integration #923 (@gotmachine)
- *  Fixed an old bug on docking #923 (@gotmachine)
+ *  Fixed an old bug on docking (@gotmachine)
  *  Habitat Refactor - General cleanup of the Habitat module #921 (@gotmachine)
  *  EVA Counter revamp to "Safe / Risky" status since counter was inaccurate (@R-T-B)
 
