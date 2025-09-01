@@ -1,3 +1,11 @@
+## v3.24 for all versions of KSP from 1.8.0 to 1.12.x
+
+ - 2025-08-31
+
+ ### Changes since the last release
+ *  Emergency hotfix for Kerbals are stealing craft shielding on EVAs to make heavy, mad max space suits in eva refactor (3.23) Issue #939  (@R-T-B)
+ *  If any crew transfers took place on 3.23, you might want to make sure Kerbals didn't shuffle shielding out along with them...  sorry about that.
+ 
 ## v3.23 for all versions of KSP from 1.8.0 to 1.12.x
 
  - 2025-08-30

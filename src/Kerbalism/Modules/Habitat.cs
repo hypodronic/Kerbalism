@@ -323,18 +323,27 @@ namespace KERBALISM
 				Lib.AddResource(part, AtmoResName, atmoAmount, atmoCapacity);
 				Lib.AddResource(part, WasteAtmoResName, 0.0, atmoCapacity);
 
-				// add external surface shielding
-				shieldingRes = Lib.AddResource(part, ShieldingResName, 0.0, surface);
-
-				// inflatable habitats can't be shielded (but still need the capacity) unless they have rigid walls
-				shieldingRes.isTweakable = !IsDeployable || inflatableUsingRigidWalls;
-
-				// if shielding feature is disabled, just hide it
-				shieldingRes.isVisible = Features.Shielding && shieldingRes.isTweakable;
-
 				// add the EVA kerbal supply resources defined in the profile
-				if (state == State.evaKerbal)
+				if (state != State.evaKerbal)
+				{
+					// add external surface shielding
+					shieldingRes = Lib.AddResource(part, ShieldingResName, 0.0, surface);
+
+					// inflatable habitats can't be shielded (but still need the capacity) unless they have rigid walls
+					shieldingRes.isTweakable = !IsDeployable || inflatableUsingRigidWalls;
+
+					// if shielding feature is disabled, just hide it
+					shieldingRes.isVisible = Features.Shielding && shieldingRes.isTweakable;
+				}
+				else
+				{
+					// add (mock) external surface shielding
+					shieldingRes = Lib.AddResource(part, ShieldingResName, 0.0, 0.0);
+					shieldingRes.isTweakable = false;
+					shieldingRes.isVisible = false;
 					Profile.SetupEva(part, false);
+				}
+					
 
 				// fill nitrogen on saves or ships that weren't created whith Kerbalism installed
 				if (part.Resources.Contains("Nitrogen"))
