@@ -610,7 +610,7 @@ namespace KERBALISM
 			}
 		}
 
-		///<summary>return the unity Colot  for kerbalism Kolors</summary>
+		///<summary>return the unity Color for kerbalism Kolors</summary>
 		public static Color KolorToColor(Kolor color)
 		{
 			switch (color)
