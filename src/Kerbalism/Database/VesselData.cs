@@ -20,8 +20,11 @@ namespace KERBALISM
 		/// <summary>False in the following cases : asteroid, debris, flag, deployed ground part, dead eva, rescue</summary>
 		public bool IsSimulated { get; private set; }
 
+		/// <summary>False if the vessel partmodules OnStart()/OnStartFinished() haven't been called yet. Always true on unloaded vessels.</summary>
+		public bool PartsStarted => Vessel.loaded ? Vessel.rootPart.started : true;
+
 		/// <summary>Set to true after evaluation has finished. Used to avoid triggering of events from an uninitialized status</summary>
-		private bool Evaluated = false;
+		public bool Evaluated { get; private set; }
 
 		// time since last update
 		private double secSinceLastEval;
@@ -355,28 +358,28 @@ namespace KERBALISM
 		public ConnectionInfo Connection => connection; ConnectionInfo connection;
 
 		/// <summary>enabled volume in m^3</summary>
-		public double Volume => volume; double volume;
+		public double Volume => habitatInfo.HabTotalVolume;
 
 		/// <summary>enabled surface in m^2</summary> 
-		public double Surface => surface; double surface;
+		public double Surface => habitatInfo.HabTotalSurface;
 
 		/// <summary>normalized pressure</summary>
-		public double Pressure => pressure; double pressure;
+		public double Pressure => habitatInfo.HabNormalizedPressure;
 
 		/// <summary>number of EVA's using available Nitrogen</summary>
 		public uint Evas => evas; uint evas;
 
 		/// <summary>waste atmosphere amount versus total atmosphere amount</summary>
-		public double Poisoning => poisoning; double poisoning;
+		public double Poisoning => habitatInfo.HabPoisoning;
 
 		/// <summary>shielding level</summary>
-		public double Shielding => shielding; double shielding;
+		public double Shielding => habitatInfo.HabShieldingFactor;
 
 		/// <summary>living space factor</summary>
-		public double LivingSpace => livingSpace; double livingSpace;
+		public double LivingSpace => habitatInfo.HabLivingSpace;
 
 		/// <summary>Available volume per crew</summary>
-		public double VolumePerCrew => volumePerCrew; double volumePerCrew;
+		public double VolumePerCrew => habitatInfo.HabVolumePerCrew;
 
 		/// <summary>comfort info</summary>
 		public Comforts Comforts => comforts; Comforts comforts;
@@ -459,7 +462,7 @@ namespace KERBALISM
 			is_rescue = Misc.IsRescueMission(Vessel);
 
 			// dead EVA are not valid vessels
-			is_eva_dead = EVA.IsDeadEVA(Vessel);
+			is_eva_dead = Lib.IsDeadEVA(Vessel);
 
 			return is_vessel && !is_rescue && !is_eva_dead;
 		}
@@ -475,18 +478,21 @@ namespace KERBALISM
 
 			secSinceLastEval += elapsedSeconds;
 
-			// don't update more than every second of game time
-			if (!forced && secSinceLastEval < 1.0)
+			// update loaded vessels every 0.1s, unloaded vessels every 1s of game time
+			double stepDuration = Vessel.loaded ? 0.1 : 1.0;
+			if (!forced && secSinceLastEval < stepDuration)
 			{
 				UpdateTransmitBufferDrive(elapsedSeconds);
 				return;
 			}
 			
 			EvaluateEnvironment(secSinceLastEval);
-			EvaluateStatus();
+			EvaluateStatus(secSinceLastEval);
 			UpdateTransmitBufferDrive(elapsedSeconds);
 			secSinceLastEval = 0.0;
-			Evaluated = true;
+
+			if (!Evaluated && PartsStarted && habitatInfo.Ready)
+				Evaluated = true;
 		}
 
 		private void UpdateTransmitBufferDrive(double elapsedSec)
@@ -544,16 +550,18 @@ namespace KERBALISM
 
 		public void UpdateOnVesselModified()
 		{
-			if (!IsSimulated)
+			// Only update stuff on simulated vessels
+			// IsSimulated might not have been set yet, so check the underlying conditions instead
+			if (!ExistsInFlight || !CheckIfSimulated())
 				return;
 
 			resourceUpdateDelegates = null;
 			ResetReliabilityStatus();
-			habitatInfo = new VesselHabitatInfo(null);
-			EvaluateStatus();
+			habitatInfo.Reset();
+			EvaluateStatus(0.0);
 			CommHandler.ResetPartTransmitters();
 
-			Lib.LogDebug("VesselData updated on vessel modified event ({0})", Lib.LogLevel.Message, Vessel.vesselName);
+			Lib.LogDebugStack("VesselData updated on vessel modified event ({0})", Lib.LogLevel.Message, Vessel.vesselName);
 		}
 
 		/// <summary> Called by GameEvents.onVesselsUndocking, just after 2 vessels have undocked </summary>
@@ -586,25 +594,26 @@ namespace KERBALISM
 		}
 
 		// This is for mods (KIS), won't be used in a stock game (the docking is handled in the OnDock method
-		internal static void OnPartCouple(GameEvents.FromToAction<Part, Part> data)
+		internal static void OnPartAboutToCouple(Part fromPart, Part toPart)
 		{
-			Lib.LogDebug("Coupling part '{0}' from vessel '{1}' to vessel '{2}'", Lib.LogLevel.Message, data.from.partInfo.title, data.from.vessel.vesselName, data.to.vessel.vesselName);
+			Lib.LogDebug("Coupling part '{0}' from vessel '{1}' to vessel '{2}'", Lib.LogLevel.Message, fromPart.partInfo.title, fromPart.vessel.vesselName, toPart.vessel.vesselName);
 
-			Vessel fromVessel = data.from.vessel;
-			Vessel toVessel = data.to.vessel;
+			Vessel fromVessel = fromPart.vessel;
+			Vessel toVessel = toPart.vessel;
 
 			VesselData fromVD = fromVessel.KerbalismData();
 			VesselData toVD = toVessel.KerbalismData();
 
-			// GameEvents.onPartCouple may be fired by mods (KIS) that add new parts to an existing vessel
+			// GameEvents.onPartCouple may be fired by stock EVA construction or mods (KIS) that add new parts to an existing vessel
 			// In the case of KIS, the part vessel is already set to the destination vessel when the event is fired
 			// so we just add the part.
 			if (fromVD == toVD)
 			{
-				if (!toVD.parts.ContainsKey(data.from.flightID))
+				if (!toVD.parts.ContainsKey(fromPart.flightID))
 				{
-					toVD.parts.Add(data.from.flightID, new PartData(data.from));
-					Lib.LogDebug("VesselData : newly created part '{0}' added to vessel '{1}'", Lib.LogLevel.Message, data.from.partInfo.title, data.to.vessel.vesselName);
+					toVD.parts.Add(fromPart.flightID, new PartData(fromPart));
+                    OnPartCoupleComplete(fromPart, toPart);
+                    Lib.LogDebug("VesselData : newly created part '{0}' added to vessel '{1}'", Lib.LogLevel.Message, fromPart.partInfo.title, toPart.vessel.vesselName);
 				}
 				return;
 			}
@@ -620,20 +629,29 @@ namespace KERBALISM
 			// reset a few things on the docked to vessel
 			toVD.supplies.Clear();
 			toVD.scansat_id.Clear();
-			toVD.UpdateOnVesselModified();
 
 			Lib.LogDebug("Coupling complete to   vessel, vd.partcount={1}, v.partcount={2} ({0})", Lib.LogLevel.Message, toVessel.vesselName, toVD.parts.Count, toVessel.parts.Count);
 			Lib.LogDebug("Coupling complete from vessel, vd.partcount={1}, v.partcount={2} ({0})", Lib.LogLevel.Message, fromVessel.vesselName, fromVD.parts.Count, fromVessel.parts.Count);
 		}
 
+		internal static void OnPartCoupleComplete(Part fromPart, Part toPart)
+		{
+            toPart.vessel.KerbalismData().UpdateOnVesselModified();
+		}
+
+		internal static void OnPartWillDie(Vessel v, uint partFlightId)
+		{
+            VesselData vd = v.KerbalismData();
+            vd.parts[partFlightId].OnPartWillDie();
+            vd.parts.Remove(partFlightId);
+            vd.UpdateOnVesselModified();
+            Lib.LogDebug($"Removing dying part id={partFlightId} on vessel={v.vesselName}, vd.partcount={vd.parts.Count}, v.partcount={(v.loaded ? v.parts.Count : v.protoVessel.protoPartSnapshots.Count)}", Lib.LogLevel.Message);
+        }
+
 		internal static void OnPartWillDie(Part part)
 		{
-			VesselData vd = part.vessel.KerbalismData();
-			vd.parts[part.flightID].OnPartWillDie();
-			vd.parts.Remove(part.flightID);
-			vd.UpdateOnVesselModified();
-			Lib.LogDebug("Removing dead part, vd.partcount={0}, v.partcount={1} (part '{2}' in vessel '{3}')", Lib.LogLevel.Message, vd.parts.Count, part.vessel.parts.Count, part.partInfo.title, part.vessel.vesselName);
-		}
+			OnPartWillDie(part.vessel, part.flightID);
+        }
 
 		#endregion
 
@@ -884,7 +902,7 @@ namespace KERBALISM
 		}
 
 		#region vessel state evaluation
-		private void EvaluateStatus()
+		private void EvaluateStatus(double elapsedSeconds)
 		{
 			UnityEngine.Profiling.Profiler.BeginSample("Kerbalism.VesselData.EvaluateStatus");
 			// determine if there is enough EC for a powered state
@@ -902,16 +920,8 @@ namespace KERBALISM
 			CommHandler.UpdateConnection(connection);
 
 			// habitat data
-			habitatInfo.Update(Vessel);
-			volume = Habitat.Tot_volume(Vessel);
-			surface = Habitat.Tot_surface(Vessel);
-			pressure = Math.Min(Habitat.Pressure(Vessel), habitatInfo.MaxPressure);
-
-			evas = (uint)(Math.Max(0, ResourceCache.GetResource(Vessel, "Nitrogen").Amount - 330) / Settings.LifeSupportAtmoLoss);
-			poisoning = Habitat.Poisoning(Vessel);
-			shielding = Habitat.Shielding(Vessel);
-			livingSpace = Habitat.Living_space(Vessel);
-			volumePerCrew = Habitat.Volume_per_crew(Vessel);
+			habitatInfo.Update(Vessel, this, elapsedSeconds);
+			evas = (uint)(Settings.LifeSupportAtmoLoss > 0 ? (ResourceCache.GetResource(Vessel, "Nitrogen").Amount - 330) / Settings.LifeSupportAtmoLoss : 0);
 			comforts = new Comforts(Vessel, EnvLanded, crewCount > 1, connection.linked && connection.rate > double.Epsilon);
 
 			// data about greenhouses

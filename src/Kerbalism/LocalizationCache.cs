@@ -46,24 +46,27 @@ namespace KERBALISM
 {
 	public static class LocalHelpers
 	{
-		// change this to the full path of the LocalizationCache.cs source file
-		private const string PathToLocalizationCache = @"C:\Users\Got\source\repos\Kerbalism\Kerbalism\src\Kerbalism\LocalizationCache.cs";
-
-		// set this to true (and change the path) to generate on KSP startup
-		// the english localization file based on the contents of LocalizationCache.cs
+		// set this to true (and change the path) to generate localization files on KSP startup
 		// IMPORTANT : don't let this to true when commiting
-		public static bool GenerateEnglishLoc = false;
-		private const string PathToEnglishLocOutput = @"C:\Users\Got\Desktop\loctest\en-us.cfg";
+		public static bool GenerateLocs = false;
 
-		// set this to true (and change the paths) to generate on KSP startup
-		// the non-english localization file based on the contents of LocalizationCache.cs
-		// and an existing (partial) localization file
-		// untranslated strings will have the comment // UNTRANSLATED
-		// IMPORTANT : don't let this to true when commiting
-		public static bool UpdateNonEnglishLoc = false;
-		private const string locLanguage = "ru";
-		private const string PathToExistingNonEnglishLoc = @"C:\Users\Got\source\repos\Kerbalism\Kerbalism\GameData\Kerbalism\Localization\" + locLanguage + ".cfg";
-		private const string PathToNonEnglishLocOutput = @"C:\Users\Got\Desktop\loctest\" + locLanguage + ".cfg";
+		// change these two to the adequate local paths :
+		private const string RepoPath = @"E:\KSP Versions\Mod dev\Kerbalism";
+		private const string OutputPath = @"E:\KSP Versions\Mod dev\Kerbalism\GameData\Kerbalism\Localization\new\";
+
+		private const string PathToLocalizationCache = RepoPath + @"\src\Kerbalism\LocalizationCache.cs";
+		private static string[] locCodes = new string[] { "de", "es-es", "fr-fr", "it-it", "pt-br", "ru", "zh-cn" };
+
+		public static void RegenerateAllLocs()
+		{
+			GenerateLoc();
+
+			foreach (string locCode in locCodes)
+			{
+				string originalLocFile = RepoPath + @"\GameData\Kerbalism\Localization\" + locCode + ".cfg";
+				RegenerateNonEnglishLoc(locCode, originalLocFile);
+			}
+		}
 
 		public static void GenerateLoc(bool template = false)
 		{
@@ -124,12 +127,12 @@ namespace KERBALISM
 			locFile.Add("  }");
 			locFile.Add("}");
 
-			System.IO.File.WriteAllLines(PathToEnglishLocOutput, locFile.ToArray());
+			System.IO.File.WriteAllLines(OutputPath + "en-us.cfg", locFile.ToArray());
 		}
 
-		public static void RegenerateNonEnglishLoc()
+		public static void RegenerateNonEnglishLoc(string langCode, string originalLocFile)
 		{
-			string[] existingLocLines = System.IO.File.ReadAllLines(PathToExistingNonEnglishLoc);
+			string[] existingLocLines = System.IO.File.ReadAllLines(originalLocFile);
 			Dictionary<string, string> foreignLocs = new Dictionary<string, string>();
 
 			foreach (string line in existingLocLines)
@@ -153,7 +156,7 @@ namespace KERBALISM
 			outputLoc.Add("//////////////////////////////////////////////////////////////////////////////////////");
 			outputLoc.Add("Localization");
 			outputLoc.Add("{");
-			outputLoc.Add("  " + locLanguage);
+			outputLoc.Add("  " + langCode);
 			outputLoc.Add("  {");
 
 			bool classFound = false;
@@ -208,7 +211,7 @@ namespace KERBALISM
 			outputLoc.Add("  }");
 			outputLoc.Add("}");
 
-			System.IO.File.WriteAllLines(PathToNonEnglishLocOutput, outputLoc.ToArray());
+			System.IO.File.WriteAllLines(OutputPath + langCode + ".cfg", outputLoc.ToArray());
 		}
 	}
 
@@ -594,6 +597,9 @@ namespace KERBALISM
 		public static string TELEMETRY_comfort = GetLoc("TELEMETRY_comfort"); // "comfort"
 		public static string TELEMETRY_EVAsavailable = GetLoc("TELEMETRY_EVAsavailable"); // "EVA's available"
 		public static string TELEMETRY_EnvBreathable = GetLoc("TELEMETRY_EnvBreathable"); // "infinite"
+		public static string TELEMETRY_EVAStatus = GetLoc("TELEMETRY_EVAStatus"); // "EVA Status"
+		public static string TELEMETRY_EVAStatus1 = GetLoc("TELEMETRY_EVAStatus1"); // "safe"
+		public static string TELEMETRY_EVAStatus2 = GetLoc("TELEMETRY_EVAStatus2"); // "risky"
 		public static string TELEMETRY_Breathableatm = GetLoc("TELEMETRY_Breathableatm"); // "breathable atmosphere"
 		public static string TELEMETRY_approx = GetLoc("TELEMETRY_approx"); // "approx (derived from stored N2)"
 		public static string TELEMETRY_TRANSMISSION = GetLoc("TELEMETRY_TRANSMISSION"); // "TRANSMISSION"
@@ -641,8 +647,8 @@ namespace KERBALISM
 		public static string VESSELCONFIG_storm = GetLoc("VESSELCONFIG_storm"); // "storm"
 		public static string VESSELCONFIG_ScriptExe = GetLoc("VESSELCONFIG_ScriptExe"); // "Receive a message when\nscripts are executed"
 		public static string VESSELCONFIG_script = GetLoc("VESSELCONFIG_script"); // "Script"
-		public static string VESSELCONFIG_ShowVessel = GetLoc("VESSELCONFIG_ShowVessel"); // "Show in vessels list"
-		public static string VESSELCONFIG_ShowVessel_desc = GetLoc("VESSELCONFIG_ShowVessel_desc"); // "Show this vessel in the vessels list"
+		public static string VESSELCONFIG_ShowVessel = GetLoc("VESSELCONFIG_ShowVessel"); // "Show vessel"
+		public static string VESSELCONFIG_ShowVessel_desc = GetLoc("VESSELCONFIG_ShowVessel_desc"); // "Show vessel in vessel list"
 
 		////////////////////////////////////////////////////////////////////
 		// Science Archive Window
@@ -825,16 +831,22 @@ namespace KERBALISM
 		////////////////////////////////////////////////////////////////////
 		public static ParamString Habitat_postmsg = new ParamString("Habitat_postmsg"); // "Can't disable <b><<1>> habitat</b> while crew is inside"
 		public static string Habitat = GetLoc("Habitat"); // "Habitat"
+		public static string Habitat_Vent = GetLoc("Habitat_Vent"); // "Vent atmosphere"
 		public static string Habitat_Action = GetLoc("Habitat_Action"); // "Enable/Disable Habitat"
 		public static string Habitat_Surface = GetLoc("Habitat_Surface"); // "Surface"
 		public static string Habitat_Volume = GetLoc("Habitat_Volume"); // "Volume"
-		public static string Habitat_pressurizing = GetLoc("Habitat_pressurizing"); // "pressurizing..."
-		public static string Habitat_depressurizing = GetLoc("Habitat_depressurizing"); // "depressurizing..."
-		public static string Habitat_inflating = GetLoc("Habitat_inflating"); // "inflating..."
-		public static string Habitat_deflating = GetLoc("Habitat_deflating"); // "deflating..."
+		public static string Habitat_pressurizing = GetLoc("Habitat_pressurizing"); // "pressurizing"
+		public static string Habitat_deploying = GetLoc("Habitat_deploying"); // "deploying"
+		public static string Habitat_inflating = GetLoc("Habitat_inflating"); // "inflating"
+		public static string Habitat_retracting = GetLoc("Habitat_retracting"); // "retracting"
+		public static string Habitat_stopRotation = GetLoc("Habitat_stopRotation"); // "stopping rotation..."
+		public static string Habitat_equalizing = GetLoc("Habitat_equalizing"); // "equalizing"
+		public static string Habitat_equalize = GetLoc("Habitat_equalize"); // "Equalize pressure"
+		public static string Habitat_stopEqualize = GetLoc("Habitat_stopEqualize"); // "Stop equalizing pressure"
 		public static string Habitat_info1 = GetLoc("Habitat_info1"); // "Volume"
 		public static string Habitat_info2 = GetLoc("Habitat_info2"); // "Surface"
 		public static string Habitat_info3 = GetLoc("Habitat_info3"); // "Pressurized"
+		public static string Habitat_Unpressurized = GetLoc("Habitat_Unpressurized"); // "Unpressurized"
 		public static string Habitat_yes = GetLoc("Habitat_yes"); // "yes"
 		public static string Habitat_no = GetLoc("Habitat_no"); // "no"
 		public static string Habitat_none = GetLoc("Habitat_none"); // "none"
@@ -1408,25 +1420,27 @@ namespace KERBALISM
 		public static string ExperimentReq_RadiationMax = GetLoc("ExperimentReq_RadiationMax"); // "Max. radiation "
 		public static string ExperimentReq_VolumePerCrewMin = GetLoc("ExperimentReq_VolumePerCrewMin"); // "Min. vol./crew "
 		public static string ExperimentReq_VolumePerCrewMax = GetLoc("ExperimentReq_VolumePerCrewMax"); // "Max. vol./crew "
-		public static string ExperimentReq_SunAngleMin = GetLoc("ExperimentReq_SunAngleMin"); // "Min sun-surface angle"
-		public static string ExperimentReq_SunAngleMax = GetLoc("ExperimentReq_SunAngleMax"); // "Max sun-surface angle"
+		public static string ExperimentReq_SunAngleMin = GetLoc("ExperimentReq_SunAngleMin"); // "Min. sun-surface angle"
+		public static string ExperimentReq_SunAngleMax = GetLoc("ExperimentReq_SunAngleMax"); // "Max. sun-surface angle"
 		public static string ExperimentReq_SurfaceSpeedMin = GetLoc("ExperimentReq_SurfaceSpeedMin"); // "Min. surface speed "
 		public static string ExperimentReq_SurfaceSpeedMax = GetLoc("ExperimentReq_SurfaceSpeedMax"); // "Max. surface speed "
 		public static string ExperimentReq_VerticalSpeedMin = GetLoc("ExperimentReq_VerticalSpeedMin"); // "Min. vertical speed "
 		public static string ExperimentReq_VerticalSpeedMax = GetLoc("ExperimentReq_VerticalSpeedMax"); // "Max. vertical speed "
 		public static string ExperimentReq_SpeedMin = GetLoc("ExperimentReq_SpeedMin"); // "Min. speed "
 		public static string ExperimentReq_SpeedMax = GetLoc("ExperimentReq_SpeedMax"); // "Max. speed "
-		public static string ExperimentReq_DynamicPressureMin = GetLoc("ExperimentReq_DynamicPressureMin"); // "Min dynamic pressure"
-		public static string ExperimentReq_DynamicPressureMax = GetLoc("ExperimentReq_DynamicPressureMax"); // "Max dynamic pressure"
+		public static string ExperimentReq_DynamicPressureMin = GetLoc("ExperimentReq_DynamicPressureMin"); // "Min. dynamic pressure"
+		public static string ExperimentReq_DynamicPressureMax = GetLoc("ExperimentReq_DynamicPressureMax"); // "Max. dynamic pressure"
 		public static string ExperimentReq_StaticPressureMin = GetLoc("ExperimentReq_StaticPressureMin"); // "Min. pressure "
 		public static string ExperimentReq_StaticPressureMax = GetLoc("ExperimentReq_StaticPressureMax"); // "Max. pressure "
 		public static string ExperimentReq_AtmDensityMin = GetLoc("ExperimentReq_AtmDensityMin"); // "Min. atm. density "
 		public static string ExperimentReq_AtmDensityMax = GetLoc("ExperimentReq_AtmDensityMax"); // "Max. atm. density "
-		public static string ExperimentReq_AltAboveGroundMin = GetLoc("ExperimentReq_AltAboveGroundMin"); // "Min ground altitude"
-		public static string ExperimentReq_AltAboveGroundMax = GetLoc("ExperimentReq_AltAboveGroundMax"); // "Max ground altitude"
-		public static string ExperimentReq_MaxAsteroidDistance = GetLoc("ExperimentReq_MaxAsteroidDistance"); // "Max asteroid distance"
-		public static string ExperimentReq_AtmosphereAltMin = GetLoc("ExperimentReq_AtmosphereAltMin"); // "Min atmosphere altitude "
-		public static string ExperimentReq_AtmosphereAltMax = GetLoc("ExperimentReq_AtmosphereAltMax"); // "Max atmosphere altitude "
+		public static string ExperimentReq_AltAboveGroundMin = GetLoc("ExperimentReq_AltAboveGroundMin"); // "Min. ground altitude"
+		public static string ExperimentReq_AltAboveGroundMax = GetLoc("ExperimentReq_AltAboveGroundMax"); // "Max. ground altitude"
+		public static string ExperimentReq_MaxAsteroidDistance = GetLoc("ExperimentReq_MaxAsteroidDistance"); // "Max. asteroid distance"
+		public static string ExperimentReq_CommSpeedMin = GetLoc("ExperimentReq_CommSpeedMin"); // "Min. transmission rate"
+		public static string ExperimentReq_CommSpeedMax = GetLoc("ExperimentReq_CommSpeedMax"); // "Max. transmission rate"
+		public static string ExperimentReq_AtmosphereAltMin = GetLoc("ExperimentReq_AtmosphereAltMin"); // "Min. atmosphere altitude "
+		public static string ExperimentReq_AtmosphereAltMax = GetLoc("ExperimentReq_AtmosphereAltMax"); // "Max. atmosphere altitude "
 		public static string ExperimentReq_CrewMin = GetLoc("ExperimentReq_CrewMin"); // "Min. crew "
 		public static string ExperimentReq_CrewMax = GetLoc("ExperimentReq_CrewMax"); // "Max. crew "
 		public static string ExperimentReq_CrewCapacityMin = GetLoc("ExperimentReq_CrewCapacityMin"); // "Min. crew capacity "

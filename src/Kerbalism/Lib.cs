@@ -1206,6 +1206,12 @@ namespace KERBALISM
 			return Lib.BuildString(v.ToString("F1"), " kPa");
 		}
 
+		///<summary> Pretty-print normalized pressure </summary>
+		public static string HumanReadableNormalizedPressure(double v)
+		{
+			return HumanReadablePressure(v * Sim.PressureAtSeaLevel());
+		}
+
 		///<summary> Pretty-print volume (value is in m^3) </summary>
 		public static string HumanReadableVolume(double v)
 		{
@@ -1334,7 +1340,23 @@ namespace KERBALISM
 				return Lib.Color(Lib.BuildString(value.ToString("F1"), " ", Local.SCIENCEARCHIVE_CREDITS), Kolor.Science);//CREDITS
 
 		}
-#endregion
+
+		/// <summary> return a verbose description of shielding level </summary>
+		public static string HumanReadableShieldingLevel(double v)
+		{
+			return v <= double.Epsilon ? Local.Habitat_none : Lib.BuildString((20.0 * v / PreferencesRadiation.Instance.shieldingEfficiency).ToString("F2"), " mm");//"none"
+		}
+
+		/// <summary> traduce living space value to string </summary>
+		public static string HumanReadableLivingSpace(double v)
+		{
+			if (v >= 0.99) return Local.Habitat_Summary1;//"ideal"
+			else if (v >= 0.75) return Local.Habitat_Summary2;//"good"
+			else if (v >= 0.5) return Local.Habitat_Summary3;//"modest"
+			else if (v >= 0.25) return Local.Habitat_Summary4;//"poor"
+			else return Local.Habitat_Summary5;//"cramped"
+		}
+		#endregion
 
 		#region GAME LOGIC
 		///<summary>return true if the current scene is flight</summary>
@@ -1484,6 +1506,12 @@ namespace KERBALISM
 			return (pos - body.position).magnitude - pqs.GetSurfaceHeight(radial);
 		}
 		*/
+
+		/// <summary>Get a body display name, without the gender tag</summary>
+		public static string BodyDisplayName(CelestialBody body)
+		{
+			return body.displayName.LocalizeRemoveGender();
+		}
 		#endregion
 
 		#region VESSEL
@@ -1603,7 +1631,13 @@ namespace KERBALISM
 			return true;
 		}
 
-
+		public static bool IsDeadEVA(Vessel v)
+		{
+			if (!v.isEVA) return false;
+			List<ProtoCrewMember> crew = Lib.CrewList(v);
+			if (crew.Count == 0) return true;
+			return DB.Kerbal(crew[0].name).eva_dead;
+		}
 
 		public static bool IsControlUnit(Vessel v)
 		{
@@ -1706,26 +1740,22 @@ namespace KERBALISM
 
 		public static int CrewCount(Part part)
 		{
-			// outside of the editors, it is easy
 			if (!Lib.IsEditor())
-			{
 				return part.protoModuleCrew.Count;
-			}
 
-			// in the editor we need something more involved
-			Int64 part_id = 4294967296L + part.GetInstanceID();
-			var manifest = KSP.UI.CrewAssignmentDialog.Instance.GetManifest();
-			var part_manifest = manifest.GetCrewableParts().Find(k => k.PartID == part_id);
-			if (part_manifest != null)
+			if (ShipConstruction.ShipManifest != null)
 			{
-				int result = 0;
-				foreach (var s in part_manifest.partCrew)
+				PartCrewManifest pcm = ShipConstruction.ShipManifest.GetPartCrewManifest(part.craftID);
+				if (pcm != null)
 				{
-					if (!string.IsNullOrEmpty(s)) result++;
+					string[] partCrew = pcm.partCrew;
+					int count = 0;
+					for (int j = partCrew.Length; j-- > 0;)
+						if (!string.IsNullOrEmpty(partCrew[j]))
+							count++;
+					return count;
 				}
-				return result;
 			}
-
 			return 0;
 		}
 
@@ -2480,7 +2510,10 @@ namespace KERBALISM
 			// return the module prefab, and increment module-specific index
 			// note: if something messed up the prefab, or module were added dynamically,
 			// then we have no chances of finding the module prefab so we return null
-			return data.index < data.prefabs.Count ? data.prefabs[data.index++] : null;
+			if (data.index < data.prefabs.Count)
+				return data.prefabs[data.index++];
+			else
+				return null;
 		}
 		#endregion
 
