@@ -37,7 +37,14 @@ namespace KERBALISM
 
 		public static void Close()
 		{
-
+			foreach (KsmGuiToggleListElement<ExpInfoAndSubjects> exp in experimentsToggleList.ChildToggles)
+			{
+				foreach (ExperimentSubjectList.BodyContainer body in exp.ToggleId.experimentSubjectList.BodyContainers)
+				{
+					body.ToggleBody(false);
+					body.SubjectsContainer.DestroyUIObjects();
+				}
+			}
 
 			window.Close();
 		}
